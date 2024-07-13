@@ -1,0 +1,61 @@
+instance_data_dir: '../instance-data-test-simple_sequence_ddpm'
+model:
+  python_class: models.ddpm.DDPM.DDPM
+  params:
+    base_learning_rate: 2.0e-06
+    training_batch_size: ${data.params.train.loader.batch_size}
+    timesteps: 1000
+    beta_schedule: 'linear'
+    linear_start: 0.0015
+    linear_end: 0.0195
+    cosine_s: null
+    v_posterior: 0
+    use_ema: true
+    unet_config:
+      python_class: models.ddpm.openaimodel_1d.UNetModel
+      params:
+        image_size: 120 # doesnt matter for default pool setting!!
+        dims: 1
+        in_channels: 16
+        out_channels: 16
+        model_channels: 64
+        attention_resolutions:
+        # note: this isn\t actually the resolution but
+        # the downsampling factor, i.e. this corresnponds to
+        # attention on spatial resolution 8,16,32, as the
+        # spatial reolution of the latents is 64 for f4
+        - 8
+        - 4
+        - 2
+        num_res_blocks: 2
+        channel_mult:
+        - 1
+        - 2
+        - 3
+        - 4
+        num_head_channels: 32
+        special_upsample: [false, false, false, false]
+data:
+  python_class: utils.lightning.GenericDataModule.GenericDataModule
+  params:
+    train:
+      python_class: datasets.Test_dataset.Test_dataset
+      params:
+        split: 'train'
+      loader:
+        shuffle: true
+        batch_size: 32
+        num_workers: 4
+logger:
+  python_class: lightning.pytorch.loggers.WandbLogger
+  params:
+    save_dir: ${instance_data_dir}
+    project: simple_sequence_ddpm
+    name: default-run
+trainer:
+  max_epochs: 1200 # override default
+  callbacks:
+    - python_class: utils.lightning.callbacks.DDPM_sequence_logger.DDPM_sequence_logger
+      params:
+        batch_frequency: 500
+        increase_log_steps: false
